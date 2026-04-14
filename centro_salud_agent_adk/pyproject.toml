@@ -1,0 +1,12 @@
+[project]
+name = "centro-salud-agent"
+version = "1.0.0"
+description = "Agente del Centro de Salud para examenes medicos de aptitud. Sistema A2A."
+requires-python = ">=3.13"
+dependencies = [
+    "google-adk>=1.2.1",
+    "google-generativeai>=0.8.0",
+    "a2a-sdk>=0.2.5",
+    "python-dotenv>=1.1.0",
+    "uvicorn>=0.34.2",
+]

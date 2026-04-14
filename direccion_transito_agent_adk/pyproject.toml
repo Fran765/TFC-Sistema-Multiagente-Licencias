@@ -1,0 +1,19 @@
+# pyproject.toml for DireccionTransito Agent
+# Main orchestrator agent for the license acquisition system
+
+[project]
+name = "direccion-transito-agent"
+version = "1.0.0"
+description = "Orquestador central del sistema de obtencion de licencias de conducir. Agente principal del protocolo A2A."
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "google-adk>=1.2.1",
+    "google-generativeai>=0.8.0",
+    "a2a-sdk>=0.2.5",
+    "nest-asyncio>=1.6.0",
+    "python-dotenv>=1.1.0",
+    "click>=8.1.0",
+    "uvicorn>=0.34.2",
+    "httpx>=0.28.1",
+]
