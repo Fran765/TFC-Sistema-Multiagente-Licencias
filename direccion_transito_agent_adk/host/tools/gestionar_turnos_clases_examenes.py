@@ -4,8 +4,10 @@ import random
 
 TURNOS: Dict[str, Dict] = {}
 
+def gestionar_turnos_clases_examenes(dni: str, tipo: str, fecha_minima: Optional[str] = None ) -> dict:
+    if not dni:
+        return {"status": "error", "message": "DNI es requerido."}
 
-def gestionar_turnos_clases_examenes(tipo: str, fecha_minima: Optional[str] = None ) -> dict:
     if not tipo:
         return {"status": "error", "message": "Tipo es requerido."}
 
@@ -20,12 +22,23 @@ def gestionar_turnos_clases_examenes(tipo: str, fecha_minima: Optional[str] = No
     else:
         base_date = date.today()
 
-    days_ahead = random.randint(2, 5)
+    if dni not in TURNOS:
+        TURNOS[dni] = {}
+
+    days_ahead = random.randint(1, 2)
     fecha_1 = base_date + timedelta(days=days_ahead)
 
     if tipo == "teorico":
-        days_examen = days_ahead + random.randint(2, 4)
+        days_examen = days_ahead + random.randint(1, 2)
         fecha_2 = base_date + timedelta(days=days_examen)
+
+        TURNOS[dni]["teorico"] = {
+            "fecha_clase": fecha_1.strftime("%Y-%m-%d"),
+            "asistencia_clase": False,
+            "fecha_examen": fecha_2.strftime("%Y-%m-%d"),
+            "asistencia_examen": False,
+            "estado": "pendiente"
+        }
 
         return {
             "status": "success",
@@ -40,6 +53,10 @@ def gestionar_turnos_clases_examenes(tipo: str, fecha_minima: Optional[str] = No
         }
 
     else:
+        TURNOS[dni]["practico"] = {
+            "fecha_examen": fecha_1.strftime("%Y-%m-%d"),
+            "estado": "pendiente"
+        }
         return {
             "status": "success",
             "message": "Turno asignado para examen práctico.",

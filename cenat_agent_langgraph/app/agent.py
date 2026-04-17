@@ -9,7 +9,7 @@ from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 from pydantic import BaseModel, Field
-from .tools.boletas_service import BoletaService
+from app.tools.boletas_service import BoletaService
 import logging
 
 logger = logging.getLogger(__name__)

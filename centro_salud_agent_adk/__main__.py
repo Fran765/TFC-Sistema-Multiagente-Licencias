@@ -32,11 +32,10 @@ def main():
     host = "localhost"
     port = 10002
     try:
-        if not os.getenv("GOOGLE_GENAI_USE_VERTEXAI") == "TRUE":
-            if not os.getenv("GOOGLE_API_KEY"):
-                raise MissingAPIKeyError(
-                    "GOOGLE_API_KEY environment variable not set and GOOGLE_GENAI_USE_VERTEXAI is not TRUE."
-                )
+        if not os.getenv("GOOGLE_API_KEY"):
+            raise MissingAPIKeyError(
+                "GOOGLE_API_KEY environment variable not set."
+            )
 
         capabilities = AgentCapabilities(streaming=True)
 
