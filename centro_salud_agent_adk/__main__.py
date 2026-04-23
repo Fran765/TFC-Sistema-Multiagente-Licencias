@@ -42,7 +42,7 @@ def main():
         skill_disponibilidad = AgentSkill(
             id="disponibilidad",
             name="Consultar Disponibilidad",
-            description="Consulta la disponibilidad de turnos médicos en un rango de fechas.",
+            description="Consulta la disponibilidad de turnos médicos en un rango de fechas. REQUISITO: Especificar el rango de fechas o el mes deseado.",
             tags=["turnos", "disponibilidad"],
             examples=[
                 "Qué fechas disponibles hay para la próxima semana?",
@@ -52,7 +52,7 @@ def main():
         skill_boleta = AgentSkill(
             id="generar_boleta_pago",
             name="Generar Boleta de Pago",
-            description="Genera una boleta de pago para el examen médico.",
+            description="Genera una boleta de pago para el examen médico. REQUISITO ESTRICTO: Es OBLIGATORIO proporcionar el DNI del ciudadano.",
             tags=["pago", "boleta"],
             examples=[
                 "Generar boleta de pago para DNI 12345678",
@@ -62,7 +62,7 @@ def main():
         skill_validar = AgentSkill(
             id="validar_pago_reservar_turno",
             name="Validar Pago y Reservar Turno",
-            description="Valida el pago de la boleta y reserva el turno médico.",
+            description="Valida el pago de la boleta y reserva el turno médico. REQUISITO ESTRICTO: Es OBLIGATORIO proporcionar DNI, Código de Boleta y Fecha/Hora deseada.",
             tags=["pago", "reserva", "turno"],
             examples=[
                 "Validar pago y reservar turno para DNI 12345678 con boleta MED12345 el 2024-01-15 a las 09:00",
@@ -72,7 +72,7 @@ def main():
         skill_resultado = AgentSkill(
             id="obtener_resultado_medico",
             name="Obtener Resultado Médico",
-            description="Obtiene el resultado del examen médico del ciudadano.",
+            description="Obtiene el resultado del examen médico del ciudadano. REQUISITO ESTRICTO: Es OBLIGATORIO proporcionar el DNI.",
             tags=["resultado", "aptitud"],
             examples=[
                 "Cuál es el resultado del examen médico de DNI 12345678?",
@@ -84,8 +84,8 @@ def main():
             description="Agente del centro médico autorizado para gestionar turnos y emitir certificados de aptitud física.",
             url=f"http://{host}:{port}/",
             version="1.0.0",
-            defaultInputModes=["text/plain"],
-            defaultOutputModes=["text/plain"],
+            defaultInputModes=CentroSaludAgent.SUPPORTED_INPUT_TYPES,
+            defaultOutputModes=CentroSaludAgent.SUPPORTED_OUTPUT_TYPES,
             capabilities=capabilities,
             skills=[skill_disponibilidad, skill_boleta, skill_validar, skill_resultado],
         )

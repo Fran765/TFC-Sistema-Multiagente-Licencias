@@ -1,7 +1,8 @@
 from collections.abc import AsyncIterable
 from datetime import date
+import json
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import tool
@@ -57,16 +58,22 @@ def certificar_pago(codigo_pago: str) -> str:
 
     return f"Pago acreditado.\nCódigo: {codigo_pago}\nEstado: pagado"
 
+class CeNATData(BaseModel):
+    codigo_pago: Optional[str] = Field(None, description="Código de la boleta generada o consultada.")
+    estado_pago: Optional[str] = Field(None, description="Estado del pago (ej: 'pendiente', 'pagado').")
+    monto: Optional[str] = Field(None, description="Monto de la boleta si fue generada.")
 
 class ResponseFormat(BaseModel):
-    status: Literal["input_required", "completed", "error"] = "input_required"
-    message: str
+    status: Literal["input_required", "completed", "error"] = Field (..., description="Estado de la respuesta.")
+    message: str = Field(..., description="Mensaje de respuesta claro para el orquestador.")
+    data: Optional[CeNATData] = Field(default_factory=CeNATData, description="Datos adicionales estructurados de la boleta o pago.")
 
 
 class CenatAgent:
     """Agente del CeNAT para gestionar certificados de antecedentes de tránsito."""
 
-    SUPPORTED_CONTENT_TYPES = ["text", "text/plain"]
+    SUPPORTED_INPUT_TYPES = ["text/plain"]
+    SUPPORTED_OUTPUT_TYPES = ["application/json"]
 
     def __init__(self):
         self.model = ChatGoogleGenerativeAI(model="gemini-2.5-flash")
@@ -92,59 +99,70 @@ class CenatAgent:
     def SYSTEM_INSTRUCTION(self) -> str:
         return SYSTEM_INSTRUCTION
 
-    async def stream(
-        self, query: str, context_id: str
-    ) -> AsyncIterable[dict[str, Any]]:
+    async def stream(self, query: str, context_id: str) -> AsyncIterable[dict[str, Any]]:
         """Streams the agent's response to the given query."""
         today_str = f"Fecha actual: {date.today().strftime('%Y-%m-%d')}."
         augmented_query = f"{today_str}\n\nConsulta del ciudadano: {query}"
         inputs = {"messages": [("user", augmented_query)]}
         config: RunnableConfig = {"configurable": {"thread_id": context_id}}
 
-        async for item in self.graph.astream(inputs, config, stream_mode="values"):
-            message = item["messages"][-1]
+        try:
 
-            if isinstance(message, AIMessage) and message.tool_calls:
-                yield {
-                    "is_task_complete": False,
-                    "require_user_input": False,
-                    "content": "Procesando solicitud...",
-                }
-            elif isinstance(message, ToolMessage):
-                yield {
-                    "is_task_complete": False,
-                    "require_user_input": False,
-                    "content": "Verificando información...",
-                }
+            async for item in self.graph.astream(inputs, config, stream_mode="values"):
+                message = item["messages"][-1]
 
-        yield self.get_agent_response(config)
+                if isinstance(message, AIMessage) and message.tool_calls:
+                    yield {
+                        "is_task_complete": False,
+                        "require_user_input": False,
+                        "content": "Procesando solicitud...",
+                    }
+                elif isinstance(message, ToolMessage):
+                    yield {
+                        "is_task_complete": False,
+                        "require_user_input": False,
+                        "content": "Verificando información...",
+                    }
+
+            yield self.get_agent_response(config)
+
+        except Exception as e:
+            logger.error(f"Error interno en LangGraph (CeNAT): {e}")
+
+            fallback_json = json.dumps({
+                "status": "error",
+                "message": f"Error interno: Faltan datos requeridos o fallo en el procesamiento. Detalle técnico: {str(e)}",
+                "data": {}
+            })
+            yield {
+                "is_task_complete": True,
+                "require_user_input": False,
+                "content": fallback_json,
+            }
 
     def get_agent_response(self, config: RunnableConfig) -> dict[str, Any]:
         """Extracts the structured response from the agent's state."""
         current_state = self.graph.get_state(config)
         structured_response = current_state.values.get("structured_response")
         if structured_response and isinstance(structured_response, ResponseFormat):
-            if structured_response.status == "input_required":
-                return {
-                    "is_task_complete": False,
-                    "require_user_input": True,
-                    "content": structured_response.message,
-                }
-            if structured_response.status == "error":
-                return {
-                    "is_task_complete": False,
-                    "require_user_input": True,
-                    "content": structured_response.message,
-                }
-            if structured_response.status == "completed":
-                return {
-                    "is_task_complete": True,
-                    "require_user_input": False,
-                    "content": structured_response.message,
-                }
 
+            json_content = structured_response.model_dump_json(exclude_none=True)
+            is_complete = structured_response.status in ["completed", "error"]
+
+            
+            return {
+                "is_task_complete": is_complete,
+                "require_user_input": structured_response.status == "input_required",
+                "content": json_content,
+            }
+        
+        fallback_json = json.dumps({
+            "status": "error",
+            "message": "Error interno: El agente CeNAT no pudo formatear la respuesta.",
+            "data": {}
+        })
         return {
-            "is_task_complete": False,
-            "require_user_input": True,
-            "content": "No podemos procesar su solicitud en este momento. Intente nuevamente.",
+            "is_task_complete": True,
+            "require_user_input": False,
+            "content": fallback_json,
         }

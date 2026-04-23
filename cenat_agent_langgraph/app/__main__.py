@@ -38,7 +38,7 @@ def main():
         skill_boleta = AgentSkill(
             id="generar_boleta_cenat",
             name="Generar Boleta CeNAT",
-            description="Genera una boleta del Certificado Nacional de Antecedentes de Tránsito (CeNAT).",
+            description="Genera una boleta del Certificado Nacional de Antecedentes de Tránsito (CeNAT). REQUISITO ESTRICTO: Para generar una boleta, es OBLIGATORIO proporcionar DNI, Nombre y Apellido.",
             tags=["cenat", "boleta", "antecedentes"],
             examples=[
                 "Necesito la boleta del CeNAT para Juan Pérez",
@@ -48,7 +48,7 @@ def main():
         skill_pago = AgentSkill(
             id="certificar_pago",
             name="Certificar Pago CeNAT",
-            description="Certifica si el pago de la boleta CeNAT fue acreditado.",
+            description="Certifica si el pago de la boleta CeNAT fue acreditado. REQUISITO ESTRICTO: Para certificar el pago, es OBLIGATORIO proporcionar el código de pago de la boleta previamente generada.",
             tags=["cenat", "pago", "certificacion"],
             examples=[
                 "Verificar si el pago con código CENAT123456 fue acreditado",
@@ -57,11 +57,11 @@ def main():
 
         agent_card = AgentCard(
             name="CeNAT Agent",
-            description="Agente del Certificado Nacional de Antecedentes de Tránsito (CeNAT). Genera boletas y certifica pagos.",
+            description="Agente especialista del sistema de Certificado Nacional de Antecedentes de Tránsito (CeNAT). Encargado de la validación de antecedentes de tránsito mediante la emisión y certificación de boletas de pago.",
             url=f"http://{host}:{port}/",
             version="1.0.0",
-            defaultInputModes=CenatAgent.SUPPORTED_CONTENT_TYPES,
-            defaultOutputModes=CenatAgent.SUPPORTED_CONTENT_TYPES,
+            defaultInputModes=CenatAgent.SUPPORTED_INPUT_TYPES,
+            defaultOutputModes=CenatAgent.SUPPORTED_OUTPUT_TYPES,
             capabilities=capabilities,
             skills=[skill_boleta, skill_pago],
         )

@@ -80,12 +80,18 @@ class DireccionTransitoAgent:
                 except Exception as e:
                     logger.error(f"Failed to initialize connection for {address}: {e}")
 
-        agent_info = [
-            json.dumps({"name": card.name, "description": card.description})
-            for card in self.cards.values()
-        ]
-        logger.info("Connected agents: %s", agent_info)
-        self.agents = "\n".join(agent_info) if agent_info else "No friends found"
+        agents_list = []
+        for card in self.cards.values():
+            skills_info = [
+                f"- Skill: {skill.name}, Description: {skill.description}"
+                for skill in card.skills
+            ]
+            agent_str = f"AGENTE: {card.name}\nDESCRIPCION: {card.description}\nHABILIDADES:\n" + "\n".join(skills_info)
+            
+            agents_list.append(agent_str)
+        
+        logger.info("Connected agents: %s", len(agents_list))
+        self.agents = "\n".join(agents_list) if agents_list else "No friends found"
 
     @classmethod
     async def create(
@@ -98,7 +104,7 @@ class DireccionTransitoAgent:
 
     def create_agent(self) -> Agent:
         return Agent(
-            model="gemini-3.1-flash-lite-preview",
+            model="gemini-2.5-pro",
             name="DireccionTransito_Orquestador",
             instruction=self.root_instruction,
             description="Agente orquestador de la Dirección de Tránsito que coordina "
@@ -115,7 +121,7 @@ class DireccionTransitoAgent:
 
     def root_instruction(self, context: ReadonlyContext) -> str:
         fecha_actual = datetime.now().strftime("%Y-%m-%d")
-        return f"{ROOT_INSTRUCTION}\n\n**Fecha Actual:** {fecha_actual}"
+        return f"{ROOT_INSTRUCTION}\n\n**Fecha Actual:** {fecha_actual} \n\n**AGENTES DISPONIBLES EN LA RED:**\n{self.agents}"
 
     async def stream(
         self, query: str, session_id: str
@@ -200,12 +206,49 @@ class DireccionTransitoAgent:
         response_content = send_response.root.model_dump_json(exclude_none=True)
         json_content = json.loads(response_content)
 
-        resp = []
+        resp_text = ""
         if json_content.get("result", {}).get("artifacts"):
             for artifact in json_content["result"]["artifacts"]:
-                if artifact.get("parts"):
-                    resp.extend(artifact["parts"])
-        return resp
+                for part in artifact.get("parts", []):
+                    if "text" in part:
+                        resp_text += part.get("text", "")
+
+        if not resp_text:
+            logger.error("El agente remoto no devolvió contenido de texto.")
+            return "ERROR: El agente no devolvió ninguna respuesta."
+        
+        try:
+            clean_text = resp_text.strip("` \n")
+            if clean_text.startswith("json"):
+                 clean_text = clean_text[4:].strip()
+
+            agent_response = json.loads(clean_text)
+
+            status = agent_response.get("status", "unknown")
+            message = agent_response.get("message", "Sin mensaje especificado.")
+
+            extra_data = agent_response.get("data")
+
+            data_context = ""
+            if extra_data:
+                data_context = f" | Datos del agente: {json.dumps(extra_data, ensure_ascii=False)}"
+
+            if status == "input_required":
+                return f"🛑 EL AGENTE REQUIERE MÁS DATOS: {message}"
+            
+            elif status == "completed":
+                return f"✅ TAREA COMPLETADA. Mensaje: {message}{data_context}"
+            
+            elif status == "error":
+                return f"❌ ERROR EN EL AGENTE REMOTO: {message}{data_context}"
+            
+            else:
+                # Si el agente devolvió un JSON pero no siguió el contrato (no tiene status)
+                return f"✅ RESPUESTA DEL AGENTE: {message}{data_context}"
+            
+        except json.JSONDecodeError:
+            logger.debug("La respuesta no es JSON. Tratándola como texto plano.")
+            return f"RESPUESTA DEL AGENTE: {resp_text}"
 
 
 def _get_initialized_host_agent_sync():

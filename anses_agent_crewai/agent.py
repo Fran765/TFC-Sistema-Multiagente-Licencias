@@ -1,4 +1,6 @@
 import os
+import json
+import logging
 from pathlib import Path
 from typing import Type
 
@@ -31,14 +33,14 @@ class EmitirConstanciaCuilTool(BaseTool):
         result = emitir_constancia_cuil(dni=dni, sexo=sexo)
         return str(result)
 
-
 class ANSESAgent:
     SUPPORTED_CONTENT_TYPES = ["text/plain"]
+    SUPPORTED_OUTPUT_TYPES = ["application/json"]
 
     def __init__(self):
         if os.getenv("GOOGLE_API_KEY"):
             self.llm = LLM(
-                model="gemini/gemini-2.0-flash", api_key=os.getenv("GOOGLE_API_KEY")
+                model="gemini/gemini-3.1-flash-lite-preview", api_key=os.getenv("GOOGLE_API_KEY")
             )
         else:
             raise ValueError("GOOGLE_API_KEY environment variable not set.")
@@ -54,10 +56,13 @@ class ANSESAgent:
         )
 
     def invoke(self, question: str) -> str:
-        task_description = f"Procesa la solicitud: '{question}'."
+        task_description = (
+            f"Solicitud del Orquestador: '{question}'.\n\n"
+            "Procesa la solicitud siguiendo estrictamente tu Contrato de Salida."
+        )
         process_task = Task(
             description=task_description,
-            expected_output="Respuesta indicando si el CUIL fue emitido o si hubo error.",
+            expected_output= "UNICAMENTE un objeto JSON crudo en texto plano. NO uses bloques de codigo markdown. NO uses la palabra 'json' al inicio. Comienza directamente con { y termina con }.",
             agent=self.anses_assistant,
         )
         crew = Crew(
@@ -66,4 +71,14 @@ class ANSESAgent:
             process=Process.sequential,
             verbose=True,
         )
-        return str(crew.kickoff())
+        try:
+            result = crew.kickoff()
+            return str(result)
+        
+        except Exception as e:
+            logging.error(f"Fallo crítico en la ejecución del LLM en CrewAI (ANSES): {e}")
+            return json.dumps({
+                "status": "error",
+                "message": "ANSES se encuentra temporalmente fuera de servicio. Por favor, intente nuevamente en unos minutos.",
+                "data": {}
+            })

@@ -7,7 +7,7 @@ BOLETAS: Dict[str, Dict] = {}
 
 def generar_boleta_pago(dni: str) -> dict:
     if not dni:
-        return {"status": "error", "message": "DNI es requerido."}
+        return "El DNI es requerido."
 
     nro_boleta = f"MED{random.randint(10000, 99999)}"
 
@@ -22,12 +22,7 @@ def generar_boleta_pago(dni: str) -> dict:
     BOLETAS[nro_boleta] = boleta
 
     return {
-        "status": "success",
-        "message": "Boleta de pago generada.",
-        "data": {
             "nro_boleta": nro_boleta,
             "monto": boleta["monto"],
-            "dni": dni,
-            "estado": "pendiente",
-        },
-    }
+            "estado": boleta["estado"]
+        }

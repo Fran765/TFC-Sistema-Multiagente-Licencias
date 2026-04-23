@@ -1,9 +1,3 @@
-"""This file serves as the main entry point for the application.
-
-It initializes the A2A server, defines the agent's capabilities,
-and starts the server to handle incoming requests.
-"""
-
 import logging
 import os
 
@@ -43,7 +37,8 @@ def main():
         skill = AgentSkill(
             id="emitir_constancia_cuil",
             name="Emisión de Constancia CUIL",
-            description="Emite constancias de CUIL (Clave Única de Identificación Laboral) para ciudadanos argentinos.",
+            description="Emite constancias de CUIL (Clave Única de Identificación Laboral) para ciudadanos argentinos. REQUISITO ESTRICTO: Para invocar esta habilidad es obligatorio proporcionar el DNI (solo números) y el Sexo (M o F) del ciudadano. No invocar si faltan estos datos.",
+            
             tags=["anses", "cuil", "identidad"],
             examples=[
                 "Obtener la constancia de CUIL para Juan Pérez, DNI 12345678, sexo masculino",
@@ -59,7 +54,7 @@ def main():
             url=f"http://{host}:{port}/",
             version="1.0.0",
             defaultInputModes=ANSESAgent.SUPPORTED_CONTENT_TYPES,
-            defaultOutputModes=ANSESAgent.SUPPORTED_CONTENT_TYPES,
+            defaultOutputModes=ANSESAgent.SUPPORTED_OUTPUT_TYPES,
             capabilities=capabilities,
             skills=[skill],
         )
